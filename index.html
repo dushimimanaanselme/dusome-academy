@@ -1,0 +1,340 @@
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Full Quiz system</title>
+
+<style>
+body{
+    background-color: black;
+    color: rgb(16, 205, 9);
+    text-align: center;
+}
+body{font-family:Arial;margin:0;padding:20px;background:linear-gradient(135deg,#4facfe,#00f2fe);color:#333};
+.container{max-width:1100px;margin:auto;background:white;padding:20px;border-radius:10px;}
+.btn{padding:8px;border:none;border-radius:5px;cursor:pointer;}
+.btn-teacher{background:#2c3e50;color:white}
+.btn-student{background:#3498db;color:white}
+.btn-danger{background:#e74c3c;color:white}
+.hidden{display:none}
+.card{border:1px solid #ddd;padding:15px;margin-top:10px;border-radius:8px}
+input,textarea,select{width:100%;padding:8px;margin:5px 0}
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th,td{border:1px solid #ddd;padding:8px}
+.correct{color:green}
+.wrong{color:red}
+</style>
+</head>
+
+<body>
+<h1><i><b>THE ASSESSMENT SYSTEM</b></i></h1>
+<img src="1.jpg"height ="250" width="250">
+<img src="1.jpg"height ="250" width="250">
+<img src="1.jpg"height ="250" width="250">
+<img src="1.jpg"height ="250" width="250">
+<div class="container">
+
+<button class="btn btn-teacher" onclick="switchView('teacher')">Teacher</button>
+<button class="btn btn-student" onclick="switchView('student')">Student</button>
+
+<!-- TEACHER -->
+<div id="teacherPortal">
+
+<h2>Teacher Dashboard</h2>
+
+<div class="card">
+
+<h3>QUESTION CREATION</h3>
+
+<input type="hidden" id="editIndex" value="-1">
+
+<textarea id="qText" placeholder="Question"></textarea>
+
+<input id="optA" placeholder="Option A">
+<input id="optB" placeholder="Option B">
+<input id="optC" placeholder="Option C">
+<input id="optD" placeholder="Option D">
+<input id="optE" placeholder="Option E">
+
+<input id="qMarks" type="number" placeholder="Marks">
+
+<select id="correct">
+<option>A</option>
+<option>B</option>
+<option>C</option>
+<option>D</option>
+<option>E</option>
+</select>
+
+<button class="btn btn-teacher" onclick="saveQuestion()">Save</button>
+<button class="btn btn-danger" onclick="resetForm()">Clear</button>
+
+<table>
+<thead>
+<tr>
+<th>Question</th>
+<th>A</th>
+<th>B</th>
+<th>C</th>
+<th>D</th>
+<th>E</th>
+<th>Correct</th>
+<th>Marks</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody id="qTable"></tbody>
+</table>
+
+</div>
+
+<div class="card">
+<h3>Student Messages</h3>
+<div id="teacherInbox"></div>
+</div>
+
+</div>
+
+<!-- STUDENT -->
+<div id="studentPortal" class="hidden">
+
+<h1><i><b>student panel</b></i></h1>
+<h2>now you can start to answer the question</h2>
+<div id="quizArea"></div>
+
+<button class="btn btn-student" onclick="submitQuiz()">Submit Quiz</button>
+
+<div class="card hidden" id="resultCard">
+<h3>Result: <span id="score"></span></h3>
+<div id="reviewBox"></div>
+</div>
+
+<div class="card">
+<h3>Send Message</h3>
+<input id="msgName" placeholder="Your name">
+<textarea id="msgText" placeholder="Message"></textarea>
+<button class="btn btn-teacher" onclick="sendMessage()">Send</button>
+
+<h3>Teacher Reply</h3>
+<div id="studentInbox"></div>
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+let questions = JSON.parse(localStorage.getItem("questions")) || [];
+let messages = JSON.parse(localStorage.getItem("messages")) || [];
+
+/* ELEMENTS */
+const teacherPortal = document.getElementById("teacherPortal");
+const studentPortal = document.getElementById("studentPortal");
+
+const qText = document.getElementById("qText");
+const optA = document.getElementById("optA");
+const optB = document.getElementById("optB");
+const optC = document.getElementById("optC");
+const optD = document.getElementById("optD");
+const optE = document.getElementById("optE");
+const qMarks = document.getElementById("qMarks");
+const correct = document.getElementById("correct");
+const editIndex = document.getElementById("editIndex");
+
+const qTable = document.getElementById("qTable");
+const quizArea = document.getElementById("quizArea");
+const teacherInbox = document.getElementById("teacherInbox");
+const studentInbox = document.getElementById("studentInbox");
+const scoreBox = document.getElementById("score");
+const reviewBox = document.getElementById("reviewBox");
+const resultCard = document.getElementById("resultCard");
+
+/* SWITCH */
+function switchView(v){
+    teacherPortal.classList.toggle("hidden", v!=="teacher");
+    studentPortal.classList.toggle("hidden", v!=="student");
+    renderAll();
+}
+
+/* SAVE */
+function saveQuestion(){
+    let i = editIndex.value;
+
+    let q = {
+        text: qText.value,
+        A: optA.value,
+        B: optB.value,
+        C: optC.value,
+        D: optD.value,
+        E: optE.value,
+        correct: correct.value,
+        marks: Number(qMarks.value || 0)
+    };
+
+    if(i === "-1") questions.push(q);
+    else questions[i] = q;
+
+    localStorage.setItem("questions", JSON.stringify(questions));
+    resetForm();
+    renderAll();
+}
+
+/* EDIT */
+function editQuestion(i){
+    let q = questions[i];
+
+    qText.value = q.text;
+    optA.value = q.A;
+    optB.value = q.B;
+    optC.value = q.C;
+    optD.value = q.D;
+    optE.value = q.E;
+    qMarks.value = q.marks;
+    correct.value = q.correct;
+
+    editIndex.value = i;
+}
+
+/* DELETE */
+function deleteQuestion(i){
+    questions.splice(i,1);
+    localStorage.setItem("questions", JSON.stringify(questions));
+    renderAll();
+}
+
+/* RESET */
+function resetForm(){
+    qText.value="";
+    optA.value="";
+    optB.value="";
+    optC.value="";
+    optD.value="";
+    optE.value="";
+    qMarks.value="";
+    correct.value="A";
+    editIndex.value="-1";
+}
+
+/* TABLE */
+function renderQuestions(){
+    qTable.innerHTML = questions.map((q,i)=>`
+        <tr>
+            <td>${q.text}</td>
+            <td>${q.A}</td>
+            <td>${q.B}</td>
+            <td>${q.C}</td>
+            <td>${q.D}</td>
+            <td>${q.E}</td>
+            <td>${q.correct}</td>
+            <td>${q.marks}</td>
+            <td>
+                <button onclick="editQuestion(${i})">Edit</button>
+                <button onclick="deleteQuestion(${i})">Delete</button>
+            </td>
+        </tr>
+    `).join("");
+}
+
+/* QUIZ */
+function startQuiz(){
+    quizArea.innerHTML = questions.map((q,i)=>`
+        <div class="card">
+        <p>${q.text}</p>
+        <p>Marks: ${q.marks}</p>
+
+        ${["A","B","C","D","E"].map(opt=>`
+            <input type="radio" name="q${i}" value="${opt}">
+            ${q[opt]}<br>
+        `).join("")}
+
+        </div>
+    `).join("");
+}
+
+/* SUBMIT */
+function submitQuiz(){
+
+    let total=0, earned=0;
+    let reviewHTML="";
+
+    questions.forEach((q,i)=>{
+        total += q.marks;
+
+        let ans = document.querySelector(`input[name=q${i}]:checked`)?.value;
+        let ok = ans === q.correct;
+
+        if(ok) earned += q.marks;
+
+        reviewHTML += `
+        <div>
+            <p>${q.text}</p>
+            <p class="${ok?'correct':'wrong'}">
+                Your answer: ${ans || "none"}
+            </p>
+            ${!ok ? `<p>Correct: ${q.correct}</p>` : ""}
+        </div>`;
+    });
+
+    let percent = total ? (earned/total)*100 : 0;
+
+    scoreBox.innerText = `${earned}/${total} (${percent.toFixed(2)}%)`;
+    reviewBox.innerHTML = reviewHTML;
+
+    resultCard.classList.remove("hidden");
+}
+
+/* MESSAGES */
+function sendMessage(){
+    messages.push({
+        id:Date.now(),
+        name:msgName.value,
+        message:msgText.value,
+        reply:""
+    });
+
+    localStorage.setItem("messages",JSON.stringify(messages));
+    msgName.value="";
+    msgText.value="";
+    renderAll();
+}
+
+function reply(id){
+    let r = prompt("Reply:");
+
+    messages = messages.map(m=>{
+        if(m.id===id) m.reply=r;
+        return m;
+    });
+
+    localStorage.setItem("messages",JSON.stringify(messages));
+    renderAll();
+}
+
+/* RENDER */
+function renderAll(){
+    renderQuestions();
+    startQuiz();
+
+    teacherInbox.innerHTML = messages.map(m=>`
+        <div class="card">
+        <b>${m.name}</b><br>
+        ${m.message}<br><br>
+        ${m.reply
+        ? `<b style="color:green">${m.reply}</b>`
+        : `<button onclick="reply(${m.id})">Reply</button>`}
+        </div>
+    `).join("");
+
+    studentInbox.innerHTML = messages
+        .filter(m=>m.reply)
+        .map(m=>`<div class="card">${m.reply}</div>`)
+        .join("");
+}
+
+renderAll();
+
+</script>
+
+</body>
+</html>
